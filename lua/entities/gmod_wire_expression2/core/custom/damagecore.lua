@@ -3,7 +3,7 @@ local function isFriend(owner, player)
 		return true
 	end
 
-    if CPPI then
+	if CPPI then
 		for _, friend in pairs(player:CPPIGetFriends()) do
 			if friend == owner then
 				return true
@@ -11,24 +11,22 @@ local function isFriend(owner, player)
 		end
 
 		return false
-    else
-        return E2Lib.isFriend(owner, player)
-    end
+	else
+		return E2Lib.isFriend(owner, player)
+	end
 end
 
-
 local function isOwner(chip, entity, canTargetPlayers)
-    if CPPI then
+	if CPPI then
 		if entity:IsPlayer() and canTargetPlayers then
 			return isFriend(chip.player, entity)
 		else
-	        return entity:CPPICanTool(chip.player, "wire_expression2")
+			return entity:CPPICanTool(chip.player, "wire_expression2")
 		end
-    else
-        return E2Lib.isOwner(chip, entity)
-    end
+	else
+		return E2Lib.isOwner(chip, entity)
+	end
 end
-
 
 E2Lib.RegisterExtension("damagecore", true)
 
@@ -142,7 +140,7 @@ registerType("damage", "xdm", DamageInfo(),
 
 registerOperator("ass", "xdm", "xdm", function(self, args)
 	local lhs, op2, scope = args[2], args[3], args[4]
-	local      rhs = op2[1](self, op2)
+	local rhs = op2[1](self, op2)
 
 	local Scope = self.Scopes[scope]
 	if not Scope.lookup then Scope.lookup = {} end
@@ -156,7 +154,6 @@ registerOperator("ass", "xdm", "xdm", function(self, args)
 	Scope.vclk[lhs] = true
 	return rhs
 end)
-
 
 e2function number operator_is(damage dmg)
 	if dmg and table.ToString(dmg) ~= table.ToString(DEFAULT) then return 1 else return 0 end
@@ -440,21 +437,18 @@ e2function void entity:dmgApplyDamage(number damage)
 	end
 
 	local dmginfo = DamageInfo()
-	dmginfo:SetAttacker(self.player)
 	dmginfo:SetDamage(damage)
+	dmginfo:SetAttacker(self.player)
 	dmginfo:SetInflictor(self.entity)
 	this:TakeDamageInfo(dmginfo)
 end
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 --- Makes an empty damage.
 e2function damage damage()
 	return table.Copy(DEFAULT)
 end
-
 
 [nodiscard, deprecated = "Use the damage event instead"]
 e2function damage lastDamage()
@@ -472,7 +466,6 @@ end
 e2function damage damage:clone()
 	return table.Copy(this)
 end
-
 
 -- local sbox_E2_Dmg_Override = CreateConVar( "sbox_E2_Dmg_Override", "3", FCVAR_ARCHIVE )
 
@@ -499,7 +492,6 @@ end
 --		damageInfo = tabtodamage(dmg)
 --	end
 -- end
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -539,7 +531,6 @@ e2function table damage:toTable()
 	return ret
 end
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 --- Returns the attacker of damage.
@@ -578,7 +569,6 @@ e2function entity damage:getInflictor()
 	return this.Inflictor
 end
 
-
 ///////////////////////////////////////////////////////////////////
 
 --- Returns 1 if the damage was caused by a bullet.
@@ -599,14 +589,13 @@ e2function number damage:isFallDamage()
 	return this.IsFallDamage and 1 or 0
 end
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 --- Sets the attacker of the damage. Returns itself.
 e2function damage damage:setAttacker(entity attacker)
+	if not this then return nil end
 	if not IsValid(attacker) then return self:throw("Invalid entity", nil) end
-
-	if not this or not IsValid(attacker) then return nil end
+	if not isOwner(self, attacker, true) then return self:throw("You do not own this entity", nil) end
 	this.Attacker = attacker
 	return this
 end
@@ -641,13 +630,12 @@ end
 
 --- Sets the inflictor of the damage for example a weapon. Returns itself.
 e2function damage damage:setInflictor(entity inflictor)
+	if not this then return nil end
 	if not IsValid(inflictor) then return self:throw("Invalid entity", nil) end
-
-	if not this or not inflictor then return nil end
+	if not isOwner(self, inflictor, true) then return self:throw("You do not own this entity", nil) end
 	this.Inflictor = inflictor
 	return this
 end
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -684,15 +672,18 @@ end
 e2function void entity:takeDamage(damage damage)
 	if not this or not damage then return nil end
 	if not IsValid(this) then return self:throw("Invalid entity", nil) end
-	if not candamage(self, this) then self:throw("You do not own this entity", nil) end
-
+	if not candamage(self, this) then return self:throw("You do not own this entity", nil) end
 
 	if not IsValid(damage.Attacker) then
 		damage.Attacker = self.player
+	elseif not isOwner(self, damage.Attacker, true) then
+		return self:throw("You do not own this entity", nil)
 	end
 
 	if not IsValid(damage.Inflictor) then
 		damage.Inflictor = self.entity
+	elseif not isOwner(self, damage.Inflictor, true) then
+		return self:throw("You do not own this entity", nil)
 	end
 
 	local dmginfo = tabtodamage(damage)
@@ -703,7 +694,7 @@ end
 e2function void entity:takeDamage(number damageAmount)
 	if not this or not damageAmount then return nil end
 	if not IsValid(this) then return self:throw("Invalid entity", nil) end
-	if not candamage(self, this) then self:throw("You do not own this entity", nil) end
+	if not candamage(self, this) then return self:throw("You do not own this entity", nil) end
 
 	attacker = self.player
 	inflictor = self.entity
@@ -715,13 +706,16 @@ end
 e2function void entity:takeDamage(number damageAmount, entity attacker)
 	if not this or not damageAmount then return nil end
 	if not IsValid(this) then return self:throw("Invalid entity", nil) end
-	if not candamage(self, this) then self:throw("You do not own this entity", nil) end
+	if not candamage(self, this) then return self:throw("You do not own this entity", nil) end
 
 	if not IsValid(attacker) then
 		attacker = self.player
+	elseif not isOwner(self, attacker, true) then
+		return self:throw("You do not own this entity", nil)
 	end
 
 	inflictor = self.entity
+
 	this:TakeDamage(damageAmount, attacker, inflictor)
 end
 
@@ -729,14 +723,18 @@ end
 e2function void entity:takeDamage(number damageAmount, entity attacker, entity inflictor)
 	if not this or not damageAmount then return nil end
 	if not IsValid(this) then return self:throw("Invalid entity", nil) end
-	if not candamage(self, this) then self:throw("You do not own this entity", nil) end
+	if not candamage(self, this) then return self:throw("You do not own this entity", nil) end
 
 	if not IsValid(attacker) then
 		attacker = self.player
+	elseif not isOwner(self, attacker, true) then
+		return self:throw("You do not own this entity", nil)
 	end
 
 	if not IsValid(inflictor) then
 		inflictor = self.entity
+	elseif not isOwner(self, inflictor, true) then
+		return self:throw("You do not own this entity", nil)
 	end
 
 	this:TakeDamage(damageAmount, attacker, inflictor)
@@ -750,10 +748,14 @@ e2function void blastDamage(damage damage, vector position, number radius)
 
 	if not IsValid(damage.Attacker) then
 		damage.Attacker = self.player
+	elseif not isOwner(self, damage.Attacker, true) then
+		return self:throw("You do not own this entity", nil)
 	end
 
 	if not IsValid(damage.Inflictor) then
 		damage.Inflictor = self.entity
+	elseif not isOwner(self, damage.Inflictor, true) then
+		return self:throw("You do not own this entity", nil)
 	end
 
 	local dmginfo = tabtodamage(damage)
@@ -772,10 +774,14 @@ e2function void blastDamage(entity inflictor, entity attacker, vector position, 
 
 	if not IsValid(attacker) then
 		attacker = self.player
+	elseif not isOwner(self, attacker, true) then
+		return self:throw("You do not own this entity", nil)
 	end
 
 	if not IsValid(inflictor) then
 		inflictor = self.entity
+	elseif not isOwner(self, inflictor, true) then
+		return self:throw("You do not own this entity", nil)
 	end
 
 	local pos = Vector(position[1], position[2], position[3])
