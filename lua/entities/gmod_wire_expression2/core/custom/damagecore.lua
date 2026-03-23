@@ -742,7 +742,7 @@ end
 
 --- Applies spherical damage based on damage info to all entities in the specified radius. (Damage, Position, Radius)
 e2function void blastDamage(damage damage, vector position, number radius)
-	if not damage then return end
+	if not damage then return nil end
 
 	if sbox_E2_Dmg_Adv:GetInt() == 2 and not self.player:IsAdmin() then return self:throw("You do not have access", nil)
 	elseif sbox_E2_Dmg_Adv:GetInt() == 3 and not self.player:IsAdmin() then return self:throw("You do not have access", nil)
